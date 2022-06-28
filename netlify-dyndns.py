@@ -17,7 +17,13 @@ def get_record_id():
         headers=auth_header
     ).json()
 
-    return([x for x in response if x['hostname'] == "home.eveperry.com"][0]['id'])
+    record = list(filter(lambda x: x['hostname']
+                         == "home.eveperry.com", response))
+
+    if len(record) == 0:
+        return None
+
+    return record[0]['id']
 
 
 def delete_record(record):
@@ -46,15 +52,28 @@ def create_record():
 
 
 def get_current_record_ip():
+    record_id = get_record_id()
+
+    if record_id is None:
+        return None
+
     return(
         requests.get(
             url=netlify_api_url_stem +
-            get_config()["zone_id"] + "/dns_records/" + get_record_id(),
+            get_config()["zone_id"] + "/dns_records/" + record_id,
             headers=auth_header
         ).json()["value"]
     )
 
 
-if get_external_ip() != get_current_record_ip():
-    delete_record(get_record_id())
-    create_record()
+def check_ip():
+    current_record_ip = get_current_record_ip()
+
+    if current_record_ip is None:
+        create_record()
+    elif get_external_ip() != current_record_ip:
+        delete_record(get_record_id())
+        create_record()
+
+
+check_ip()
